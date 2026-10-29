@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+
+.env
+.env.*
+!.env.example
+
+.idea/
+.junie/
+.vscode/
+.DS_Store
+
+*.log
+npm-debug.log*
+pnpm-debug.log*

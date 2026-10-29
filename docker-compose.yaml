@@ -1,0 +1,23 @@
+# Local development: only PostgreSQL. Backend and frontend run on the host (pnpm start:dev / pnpm dev).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: seatlock-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: seatlock_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5434:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d seatlock_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

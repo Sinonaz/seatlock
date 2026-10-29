@@ -1,0 +1,7 @@
+# Add this block to the shared Caddyfile on the server (e.g. /srv/caddy/Caddyfile, next to ApexRate)
+# and reload Caddy. The seatlock-frontend container must be attached to the external `proxy` network.
+
+seatlock.example.com {
+    encode zstd gzip
+    reverse_proxy seatlock-frontend:80
+}

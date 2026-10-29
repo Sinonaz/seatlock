@@ -1,0 +1,66 @@
+# Production compose for the VDS. The CI pipeline copies it to /srv/seatlock/docker-compose.yaml.
+# Images come from GHCR; nothing is built on the server.
+# Required on the server: /srv/seatlock/.env and the external docker network `proxy` shared with Caddy.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: seatlock-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is not set}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is not set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set}
+    # No published ports: the database is reachable only from containers in this project.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/sinonaz/seatlock-backend:${TAG:-latest}
+    container_name: seatlock-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is not set}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is not set}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
+      BOOKING_TTL_MINUTES: ${BOOKING_TTL_MINUTES:-15}
+      REFUND_WINDOW_HOURS: ${REFUND_WINDOW_HOURS:-24}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY is not set}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?STRIPE_WEBHOOK_SECRET is not set}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    image: ghcr.io/sinonaz/seatlock-frontend:${TAG:-latest}
+    container_name: seatlock-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    # No published ports: Caddy reaches this container over the `proxy` network.
+    networks:
+      - default
+      - proxy
+
+volumes:
+  postgres_data:
+
+networks:
+  proxy:
+    external: true
