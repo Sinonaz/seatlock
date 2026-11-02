@@ -1,22 +1,36 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpStatus,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma, User } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { DomainException } from '../common/domain.exception';
+import { PrismaService } from '../prisma/prisma.service';
 import { toUserResponse, UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import {
+  generateRefreshToken,
+  hashToken,
+  newFamilyId,
+} from './refresh-token.util';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, userAgent?: string) {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.usersService.findByEmail(email);
     if (existing) {
@@ -50,14 +64,10 @@ export class AuthService {
       throw error;
     }
 
-    const accessToken = await this.signAccessToken(user);
-    return {
-      accessToken,
-      user: toUserResponse(user),
-    };
+    return this.issueTokens(user, undefined, userAgent);
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, userAgent?: string) {
     const email = dto.email.trim().toLowerCase();
     const user = await this.usersService.findByEmail(email);
     if (!user) {
@@ -80,9 +90,72 @@ export class AuthService {
       );
     }
 
+    return this.issueTokens(user, undefined, userAgent);
+  }
+
+  async refresh(rawToken: string | undefined, userAgent?: string) {
+    if (!rawToken) throw new UnauthorizedException();
+
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: hashToken(rawToken) },
+      include: { user: true },
+    });
+    if (!stored || stored.expiresAt < new Date()) {
+      throw new UnauthorizedException();
+    }
+
+    // Reuse of an already rotated token means it leaked: revoke the whole family
+    if (stored.revokedAt) {
+      await this.prisma.refreshToken.updateMany({
+        where: { familyId: stored.familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      this.logger.warn(
+        `Refresh token reuse detected for user ${stored.userId}`,
+      );
+      throw new UnauthorizedException('Refresh token reuse detected');
+    }
+
+    // Compare-and-set: only one concurrent refresh with this token may win
+    const { count } = await this.prisma.refreshToken.updateMany({
+      where: { id: stored.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    if (count === 0) throw new UnauthorizedException();
+
+    return this.issueTokens(stored.user, stored.familyId, userAgent);
+  }
+
+  async logout(rawToken: string | undefined) {
+    if (!rawToken) return;
+    await this.prisma.refreshToken.updateMany({
+      where: { tokenHash: hashToken(rawToken), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  private async issueTokens(
+    user: User,
+    familyId: string = newFamilyId(),
+    userAgent?: string,
+  ) {
     const accessToken = await this.signAccessToken(user);
+    const refreshToken = generateRefreshToken();
+    const ttlDays = this.config.getOrThrow<number>('REFRESH_TOKEN_TTL_DAYS');
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(refreshToken),
+        familyId,
+        expiresAt: new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000),
+        userAgent,
+      },
+    });
+
     return {
       accessToken,
+      refreshToken,
       user: toUserResponse(user),
     };
   }
