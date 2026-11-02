@@ -10,7 +10,7 @@ export class RefreshTokenCleanupService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  // Keep expired tokens for a while so late reuse attempts are still detected
+  // Keep expired tokens for a while to investigate sessions and suspicious activity
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async removeExpired() {
     const threshold = new Date(

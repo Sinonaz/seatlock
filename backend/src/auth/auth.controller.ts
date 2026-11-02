@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
   HttpStatus,
@@ -14,6 +15,8 @@ import type { CookieOptions, Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { Public } from './decorators/public.decorator';
+import * as currentUserDecorator from './decorators/current-user.decorator';
 
 const REFRESH_COOKIE = 'refresh_token';
 const AUTH_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
@@ -25,6 +28,14 @@ export class AuthController {
     private readonly config: ConfigService,
   ) {}
 
+  @Get('me')
+  async me(
+    @currentUserDecorator.CurrentUser() user: currentUserDecorator.AuthUser,
+  ) {
+    return this.authService.me(user);
+  }
+
+  @Public()
   @Post('register')
   @Throttle(AUTH_THROTTLE)
   async register(
@@ -40,6 +51,7 @@ export class AuthController {
     return body;
   }
 
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @Throttle(AUTH_THROTTLE)
@@ -56,6 +68,7 @@ export class AuthController {
     return body;
   }
 
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
@@ -71,6 +84,7 @@ export class AuthController {
     return body;
   }
 
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {

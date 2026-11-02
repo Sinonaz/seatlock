@@ -18,6 +18,7 @@ import {
   hashToken,
   newFamilyId,
 } from './refresh-token.util';
+import { AuthUser } from './decorators/current-user.decorator';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +30,15 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {}
+
+  async me(user: AuthUser) {
+    const found = await this.usersService.findById(user.id);
+    if (!found) {
+      throw new UnauthorizedException();
+    }
+
+    return toUserResponse(found);
+  }
 
   async register(dto: RegisterDto, userAgent?: string) {
     const email = dto.email.trim().toLowerCase();
