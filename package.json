@@ -1,0 +1,17 @@
+{
+  "name": "seatlock",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@nestjs/jwt": "^12.0.3",
+    "@nestjs/mapped-types": "*",
+    "argon2": "^0.45.1"
+  }
+}
