@@ -70,6 +70,13 @@ TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5434/seatlock_test pn
 Without `TEST_DATABASE_URL`, this suite is skipped. E2E tests use Jest's ESM
 support because the installed NestJS packages include ESM modules.
 
+The bookings suite uses the same migrated database and covers concurrent seat
+allocation, idempotency, ownership, cancellation and transaction rollback:
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5434/seatlock_test pnpm run test:bookings
+```
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

@@ -19,6 +19,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
     "test:events": "pnpm run test:e2e --runInBand events.e2e-spec.ts",
+    "test:bookings": "pnpm run test:e2e --runInBand bookings.e2e-spec.ts",
     "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {
