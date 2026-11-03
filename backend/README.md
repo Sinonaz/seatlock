@@ -57,6 +57,19 @@ $ pnpm run test:e2e
 $ pnpm run test:cov
 ```
 
+### Events API integration tests
+
+Run from `backend` with the local PostgreSQL container running. The suite uses
+the separate `seatlock_test` database and removes only its own fixtures.
+
+```bash
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/seatlock_test pnpm exec prisma migrate deploy
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5434/seatlock_test pnpm run test:events
+```
+
+Without `TEST_DATABASE_URL`, this suite is skipped. E2E tests use Jest's ESM
+support because the installed NestJS packages include ESM modules.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

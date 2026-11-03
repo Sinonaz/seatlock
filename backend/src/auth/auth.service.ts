@@ -47,7 +47,7 @@ export class AuthService {
       throw new DomainException(
         HttpStatus.CONFLICT,
         'EMAIL_TAKEN',
-        'Этот email уже зарегистрирован',
+        'This email is already registered',
       );
     }
 
@@ -68,7 +68,7 @@ export class AuthService {
         throw new DomainException(
           HttpStatus.CONFLICT,
           'EMAIL_TAKEN',
-          'Этот email уже зарегистрирован',
+          'This email is already registered',
         );
       }
       throw error;
@@ -84,7 +84,7 @@ export class AuthService {
       throw new DomainException(
         HttpStatus.UNAUTHORIZED,
         'INVALID_CREDENTIALS',
-        'Неверный email или пароль',
+        'Invalid email or password',
       );
     }
 
@@ -96,7 +96,7 @@ export class AuthService {
       throw new DomainException(
         HttpStatus.UNAUTHORIZED,
         'INVALID_CREDENTIALS',
-        'Неверный email или пароль',
+        'Invalid email or password',
       );
     }
 
