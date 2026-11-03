@@ -123,7 +123,9 @@ model Booking {
 model Payment {
   id                      String        @id @default(uuid())
   bookingId               String
-  stripeCheckoutSessionId String        @unique
+  stripeCheckoutSessionId String?       @unique
+  checkoutRequest         Json?
+  refundRequested         Boolean       @default(false)
   stripePaymentIntentId   String?       @unique
   amountCents             Int
   currency                String
@@ -134,6 +136,7 @@ model Payment {
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
   @@index([bookingId])
+  @@index([refundRequested, status])
   @@map("payments")
 }
 

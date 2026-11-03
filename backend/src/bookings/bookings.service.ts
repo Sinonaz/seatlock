@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser } from '../auth/decorators/current-user.decorator';
@@ -17,6 +18,8 @@ import {
   toBookingResponse,
 } from './booking-response';
 import { transitionBooking } from './booking-transition';
+import { RefundsService } from '../payments/refunds.service';
+import { lockBookingEvent } from '../payments/payment-lock';
 
 @Injectable()
 export class BookingsService {
@@ -26,6 +29,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     config: ConfigService,
+    @Optional() private readonly refunds?: RefundsService,
   ) {
     this.bookingTtlMinutes = config.getOrThrow<number>('BOOKING_TTL_MINUTES');
   }
@@ -44,6 +48,9 @@ export class BookingsService {
   }
 
   async cancelBooking(user: AuthUser, id: string) {
+    const current = await this.findOwnBooking(user.id, id);
+    if (current.status === 'PAID' && this.refunds)
+      return this.refunds.refundBooking(id, user.id);
     return this.prisma.$transaction(async (tx) => {
       const booking = await this.findOwnBooking(user.id, id, tx);
       // Match event cancellation's lock order: event first, booking second.
@@ -182,6 +189,22 @@ export class BookingsService {
       }
       throw error;
     }
+  }
+
+  async expire(id: string) {
+    const changed = await this.prisma.$transaction(async (tx) => {
+      const booking = await lockBookingEvent(tx, id);
+      if (booking.expiresAt > new Date()) return false;
+      if (!(await transitionBooking(tx, id, 'PENDING', 'EXPIRED')))
+        return false;
+      await tx.event.update({
+        where: { id: booking.eventId },
+        data: { availableSeats: { increment: booking.quantity } },
+      });
+      return true;
+    });
+    if (changed) this.logger.log(`Booking ${id} expired`);
+    return changed;
   }
 
   private async findByIdempotencyKey(

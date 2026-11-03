@@ -1,12 +1,14 @@
 import { plainToInstance } from 'class-transformer';
 import {
   IsEnum,
+  IsBoolean,
   IsInt,
   IsString,
   IsUrl,
   Min,
   MinLength,
   validateSync,
+  ValidateIf,
 } from 'class-validator';
 
 enum NodeEnv {
@@ -25,14 +27,29 @@ class EnvironmentVariables {
   @IsInt() @Min(1) REFRESH_TOKEN_TTL_DAYS: number;
   @IsInt() @Min(1) BOOKING_TTL_MINUTES: number;
   @IsInt() @Min(0) REFUND_WINDOW_HOURS: number;
-  @IsString() STRIPE_SECRET_KEY: string;
-  @IsString() STRIPE_WEBHOOK_SECRET: string;
+  @IsBoolean() STRIPE_ENABLED: boolean;
+  @ValidateIf((env: EnvironmentVariables) => env.STRIPE_ENABLED)
+  @IsString()
+  @MinLength(1)
+  STRIPE_SECRET_KEY: string;
+  @ValidateIf((env: EnvironmentVariables) => env.STRIPE_ENABLED)
+  @IsString()
+  @MinLength(1)
+  STRIPE_WEBHOOK_SECRET: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
-  const validated = plainToInstance(EnvironmentVariables, config, {
-    enableImplicitConversion: true,
-  });
+  const enabled = config.STRIPE_ENABLED ?? 'false';
+  if (![true, false, 'true', 'false'].includes(enabled as string | boolean)) {
+    throw new Error('STRIPE_ENABLED must be true or false');
+  }
+  const validated = plainToInstance(
+    EnvironmentVariables,
+    { ...config, STRIPE_ENABLED: enabled === true || enabled === 'true' },
+    {
+      enableImplicitConversion: true,
+    },
+  );
   const errors = validateSync(validated, { skipMissingProperties: false });
   if (errors.length > 0) {
     throw new Error(`Invalid environment variables:\n${errors.toString()}`);

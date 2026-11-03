@@ -77,6 +77,37 @@ allocation, idempotency, ownership, cancellation and transaction rollback:
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5434/seatlock_test pnpm run test:bookings
 ```
 
+The payments and admin suites cover expiry, checkout, webhooks, refunds and the
+ADMIN user management endpoints:
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5434/seatlock_test pnpm run test:payments
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5434/seatlock_test pnpm run test:admin
+```
+
+## Stripe
+
+The backend runs without Stripe credentials. With `STRIPE_ENABLED=false` (the
+default) free bookings work end-to-end and paid checkouts return `503`. To enable
+payments, fill in `backend/.env`:
+
+```bash
+STRIPE_ENABLED=true
+STRIPE_SECRET_KEY=sk_test_...    # Dashboard -> Developers -> API keys
+STRIPE_WEBHOOK_SECRET=whsec_...  # from `stripe listen --forward-to localhost:3000/api/payments/webhook`
+```
+
+Then forward webhooks locally:
+
+```bash
+stripe listen --forward-to localhost:3000/api/payments/webhook \
+  --events checkout.session.completed,checkout.session.expired,charge.refunded
+```
+
+On the server, set the same variables in `/srv/seatlock/.env` using a separate
+webhook signing secret from the Stripe Dashboard, and `FRONTEND_URL` to your
+production origin.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

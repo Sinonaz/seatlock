@@ -338,12 +338,16 @@ describeWithDatabase('Bookings API (PostgreSQL)', () => {
       (second.body as { id: string }).id,
       id,
     ]);
-    for (const status of ['PAID', 'EXPIRED', 'REFUNDED'] as const) {
+    for (const status of ['EXPIRED', 'REFUNDED'] as const) {
       await db.booking.update({ where: { id }, data: { status } });
       expect((await cancel(id).expect(409)).body).toMatchObject({
         code: 'INVALID_STATUS_TRANSITION',
       });
     }
+    await db.booking.update({ where: { id }, data: { status: 'PAID' } });
+    expect((await cancel(id).expect(409)).body).toMatchObject({
+      code: 'REFUND_WINDOW_CLOSED',
+    });
   });
 
   it('rolls back seat deduction on insert failure and cancellation on seat update failure', async () => {

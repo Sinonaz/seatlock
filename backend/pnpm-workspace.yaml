@@ -1,4 +1,5 @@
 allowBuilds:
+  '@scarf/scarf': false
   argon2: true
   '@parcel/watcher': false
   '@prisma/client': true

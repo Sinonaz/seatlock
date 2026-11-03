@@ -13,7 +13,7 @@
 ```
 seatlock/
 ├── frontend/              # Vue 3 + TypeScript + Tailwind 4 + Pinia + Vue Router (готов)
-├── backend/               # NestJS + PostgreSQL + Prisma + Stripe (пишется по ТЗ)
+├── backend/               # NestJS + PostgreSQL + Prisma + Stripe
 │   └── TECHNICAL_SPECIFICATION.md
 ├── docker/postgres-init/  # создаёт тестовую БД seatlock_test
 ├── deploy/                # пример блока для общего Caddy на сервере
@@ -47,8 +47,13 @@ cd backend && pnpm start:dev         # API на http://localhost:3000/api
 stripe listen --forward-to localhost:3000/api/payments/webhook
 ```
 
+Бэкенд работает и без Stripe-ключей: с `STRIPE_ENABLED=false` (по умолчанию)
+бесплатные билеты оплачиваются сразу, а платные возвращают `503`. Чтобы включить
+оплату, заполни `STRIPE_SECRET_KEY` и `STRIPE_WEBHOOK_SECRET` в `backend/.env`
+и поставь `STRIPE_ENABLED=true` (см. `backend/README.md`).
+
 ## Деплой
 
 Как у ApexRate: GitHub Actions собирает образы `ghcr.io/sinonaz/seatlock-{backend,frontend}`, копирует `docker-compose.prod.yaml` в `/srv/seatlock` на сервере и перезапускает контейнеры. HTTPS даёт общий Caddy (блок в `deploy/Caddyfile.example`). Подробности в разделе 9 ТЗ.
 
-Workflow начнёт проходить, когда в `backend/` появятся код и `Dockerfile`.
+Workflow собирает образы и запускает unit/e2e-тесты с PostgreSQL перед деплоем.

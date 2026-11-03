@@ -11,7 +11,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -20,6 +20,8 @@
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
     "test:events": "pnpm run test:e2e --runInBand events.e2e-spec.ts",
     "test:bookings": "pnpm run test:e2e --runInBand bookings.e2e-spec.ts",
+    "test:payments": "pnpm run test:e2e --runInBand payments.e2e-spec.ts",
+    "test:admin": "pnpm run test:e2e --runInBand admin.e2e-spec.ts",
     "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {
@@ -30,6 +32,7 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schedule": "^12.0.2",
+    "@nestjs/swagger": "^12.1.0",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
@@ -40,7 +43,8 @@
     "dotenv": "^18.0.9",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "stripe": "^23.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

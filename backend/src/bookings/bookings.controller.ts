@@ -14,10 +14,26 @@ import type { AuthUser } from '../auth/decorators/current-user.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { IdempotencyKey } from './idempotencyKey.decorator';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { CheckoutService } from '../payments/checkout.service';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 
 @Controller('bookings')
+@ApiTags('Bookings')
+@ApiBearerAuth()
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) {}
+  constructor(
+    private readonly bookingsService: BookingsService,
+    private readonly checkout: CheckoutService,
+  ) {}
+
+  @Post(':id/pay')
+  @HttpCode(200)
+  pay(
+    @CurrentUser() user: AuthUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.checkout.createCheckout(user.id, id);
+  }
 
   @Get('my')
   async getMyBookings(@CurrentUser() user: AuthUser) {
@@ -25,6 +41,11 @@ export class BookingsController {
   }
 
   @Post()
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: true,
+    schema: { type: 'string', format: 'uuid' },
+  })
   async createBooking(
     @CurrentUser() user: AuthUser,
     @IdempotencyKey() key: string,
